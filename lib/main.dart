@@ -7,6 +7,8 @@ import 'utils/app_theme.dart';
 import 'services/auth_service.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/map_screen.dart';
+import 'screens/library_screen.dart';
 import 'screens/history_screen.dart';
 import 'screens/stats_screen.dart';
 
@@ -19,6 +21,8 @@ Future<void> main() async {
 
   // Restore the last signed-in user (if any) before the first frame.
   await AuthService.instance.restoreSession();
+  // If an account was created offline, send it to the server when possible.
+  AuthService.instance.syncPendingQuietly();
 
   runApp(const RicePestApp());
 }
@@ -50,7 +54,7 @@ class AuthGate extends StatelessWidget {
       valueListenable: AuthService.instance.userNotifier,
       builder: (_, user, __) {
         if (user == null) return const LoginScreen();
-        // ValueKey(user) rebuilds Detect / History / Stats from scratch when a
+        // ValueKey(user) rebuilds Detect / Map / Library / History / Stats from scratch when a
         // different user signs in, so no data from the previous user is shown.
         return MainNavigation(key: ValueKey(user));
       },
@@ -72,6 +76,8 @@ class _MainNavigationState extends State<MainNavigation> {
 
   final List<Widget> _screens = const [
     HomeScreen(),
+    MapScreen(),
+    LibraryScreen(),
     HistoryScreen(),
     StatsScreen(),
   ];
@@ -85,12 +91,21 @@ class _MainNavigationState extends State<MainNavigation> {
         onDestinationSelected: (i) => setState(() => _currentIndex = i),
         backgroundColor: Colors.white,
         indicatorColor: const Color(0xFF60AD5E),
-        // indicatorColor: AppTheme.primaryLight.withOpacity(0.2),
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.camera_alt_outlined),
             selectedIcon: Icon(Icons.camera_alt, color: AppTheme.primary),
             label: 'Detect',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.map_outlined),
+            selectedIcon: Icon(Icons.map, color: AppTheme.primary),
+            label: 'Map',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.menu_book_outlined),
+            selectedIcon: Icon(Icons.menu_book, color: AppTheme.primary),
+            label: 'Library',
           ),
           NavigationDestination(
             icon: Icon(Icons.history_outlined),

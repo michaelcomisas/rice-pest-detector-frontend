@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/location_service.dart';
 import '../models/analysis_result.dart';
 import '../utils/app_theme.dart';
 import '../widgets/result_card.dart';
@@ -251,8 +252,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     try {
       File fileToUpload = File(_pickedFile!.path);
-      final result = await _api.analyzeImage(fileToUpload);
-      setState(() { _result = result; });
+
+      // Detect picture location (GPS / regional field mapping)
+      final detectedLocation = await LocationService.instance.detectPictureLocation(fileToUpload);
+
+      // Upload and analyze image
+      final rawResult = await _api.analyzeImage(fileToUpload);
+
+      // Attach detected picture location metadata
+      final resultWithLoc = rawResult.copyWithLocation(
+        locationName: detectedLocation.locationName,
+        latitude: detectedLocation.latitude,
+        longitude: detectedLocation.longitude,
+      );
+
+      setState(() { _result = resultWithLoc; });
+      ApiService.notifyHistoryChanged();
     } on ApiException catch (e) {
       _showError(e.message);
     } catch (e) {
@@ -412,9 +427,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ],
 
             // ── Loading indicator ──────────────────────────────────────────
-            // The scanning-line animation over the photo itself now carries
-            // the primary "in progress" feedback, so this is just a short
-            // status line underneath.
             if (_loading) ...[
               const SizedBox(height: 16),
               const Center(
@@ -509,16 +521,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return Positioned.fill(
       child: Stack(
         children: [
-          // Subtle dark scrim so the glowing line reads clearly against
-          // any photo.
           Container(color: Colors.black.withOpacity(0.25)),
 
-          // Faint horizontal grid lines for a "scanner" feel.
           Positioned.fill(
             child: CustomPaint(painter: _ScanGridPainter()),
           ),
 
-          // The moving scan line itself.
           AnimatedBuilder(
             animation: _scanAnimation,
             builder: (_, __) {
@@ -550,13 +558,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             },
           ),
 
-          // Scanning corner brackets, like a viewfinder reticle.
           const Positioned(top: 10, left: 10, child: _ScanCorner(alignment: Alignment.topLeft)),
           const Positioned(top: 10, right: 10, child: _ScanCorner(alignment: Alignment.topRight)),
           const Positioned(bottom: 10, left: 10, child: _ScanCorner(alignment: Alignment.bottomLeft)),
           const Positioned(bottom: 10, right: 10, child: _ScanCorner(alignment: Alignment.bottomRight)),
 
-          // Status pill.
           Positioned(
             bottom: 12,
             left: 0,

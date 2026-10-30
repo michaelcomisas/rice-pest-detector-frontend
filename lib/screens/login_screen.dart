@@ -210,6 +210,21 @@ class _LoginScreenState extends State<LoginScreen> {
                         validator: (v) =>
                         v != _pinCtrl.text ? 'PINs do not match' : null,
                       ),
+                    ] else ...[
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: _busy ? null : _showForgotPasswordModal,
+                          child: const Text(
+                            'Forgot PIN / Password?',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppTheme.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
                     ],
 
                     if (_error != null) ...[
@@ -217,9 +232,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.1),
+                          color: Colors.red.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.red.withOpacity(0.3)),
+                          border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
                         ),
                         child: Text(
                           _error!,
@@ -264,6 +279,189 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  void _showForgotPasswordModal() {
+    final resetMobileCtrl = TextEditingController(text: _mobileCtrl.text);
+    final resetPinCtrl = TextEditingController();
+    final resetPin2Ctrl = TextEditingController();
+    final resetFormKey = GlobalKey<FormState>();
+    bool resetObscure = true;
+    bool resetBusy = false;
+    String? resetError;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+                left: 20,
+                right: 20,
+                top: 20,
+              ),
+              child: SingleChildScrollView(
+                child: Form(
+                  key: resetFormKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Reset PIN / Forgot Password',
+                            style: TextStyle(
+                                fontSize: 17, fontWeight: FontWeight.bold),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: () => Navigator.pop(ctx),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Enter your mobile number and set a new 4-digit PIN.',
+                        style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: resetMobileCtrl,
+                        keyboardType: TextInputType.phone,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(RegExp(r'[0-9+\s-]')),
+                          LengthLimitingTextInputFormatter(16),
+                        ],
+                        decoration: const InputDecoration(
+                          labelText: 'Mobile number',
+                          hintText: '09171234567',
+                          prefixIcon: Icon(Icons.phone_android_rounded),
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (v) =>
+                            AuthService.normalizeMobile(v ?? '') == null
+                                ? 'Enter a valid mobile number'
+                                : null,
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: resetPinCtrl,
+                        obscureText: resetObscure,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(4),
+                        ],
+                        decoration: InputDecoration(
+                          labelText: 'New 4-digit PIN',
+                          prefixIcon: const Icon(Icons.lock_outline_rounded),
+                          border: const OutlineInputBorder(),
+                          suffixIcon: IconButton(
+                            icon: Icon(resetObscure
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined),
+                            onPressed: () =>
+                                setModalState(() => resetObscure = !resetObscure),
+                          ),
+                        ),
+                        validator: (v) => (v == null || v.length != 4)
+                            ? 'PIN must be 4 digits'
+                            : null,
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: resetPin2Ctrl,
+                        obscureText: resetObscure,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(4),
+                        ],
+                        decoration: const InputDecoration(
+                          labelText: 'Confirm New 4-digit PIN',
+                          prefixIcon: Icon(Icons.lock_reset_rounded),
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (v) => v != resetPinCtrl.text
+                            ? 'PINs do not match'
+                            : null,
+                      ),
+                      if (resetError != null) ...[
+                        const SizedBox(height: 12),
+                        Text(
+                          resetError!,
+                          style: const TextStyle(
+                              color: Colors.red, fontSize: 13, fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        onPressed: resetBusy
+                            ? null
+                            : () async {
+                                if (!resetFormKey.currentState!.validate()) return;
+                                final messenger = ScaffoldMessenger.of(context);
+                                final nav = Navigator.of(context);
+                                setModalState(() {
+                                  resetBusy = true;
+                                  resetError = null;
+                                });
+                                try {
+                                  await AuthService.instance.resetPin(
+                                    mobile: resetMobileCtrl.text,
+                                    newPin: resetPinCtrl.text,
+                                  );
+                                  if (mounted) {
+                                    nav.pop();
+                                    setState(() {
+                                      _mobileCtrl.text = resetMobileCtrl.text;
+                                      _pinCtrl.text = resetPinCtrl.text;
+                                    });
+                                    messenger.showSnackBar(
+                                      const SnackBar(
+                                        content: Text('PIN successfully reset! You can now sign in.'),
+                                        backgroundColor: AppTheme.primary,
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  setModalState(() {
+                                    resetError = e.toString();
+                                    resetBusy = false;
+                                  });
+                                }
+                              },
+                        child: resetBusy
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Text('Reset PIN'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

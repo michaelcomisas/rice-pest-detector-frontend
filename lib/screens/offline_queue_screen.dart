@@ -70,6 +70,7 @@ class _OfflineQueueScreenState extends State<OfflineQueueScreen> {
       final result = await _api.analyzeImage(file);
 
       await _removeFromQueue(path);
+      ApiService.notifyHistoryChanged();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

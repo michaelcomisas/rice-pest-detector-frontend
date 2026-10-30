@@ -6,11 +6,11 @@ version: 1.0.0+1
 environment:
   sdk: '>=3.0.0 <4.0.0'
 
-
 dependencies:
-  crypto: ^3.0.3
   flutter:
     sdk: flutter
+
+  crypto: ^3.0.3
 
   # HTTP & networking
   http: ^1.2.2
@@ -37,27 +37,25 @@ dependencies:
   path: ^1.9.0
   path_provider: ^2.1.3
   permission_handler: ^11.3.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.13.1
 
-flutter_launcher_icons: ^0.13.1
-flutter_icons:
-  android:
-    true ios:
-    true image_path: "assets/icon/app_icon.png"
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/app_icon.png"
 
 flutter:
   uses-material-design: true
 
-  # Asset folders initialization
   assets:
-    - assets/images/app_icon.png
-    - assets/images/app_logo_full.png
+    - assets/images/
     - assets/animations/
 
-  # Custom Typography mapping
   fonts:
     - family: Poppins
       fonts:
